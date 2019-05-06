@@ -38,12 +38,12 @@ parser.add_option("-p", "--path", dest="train_path", help="Path to training data
 parser.add_option("-o", "--parser", dest="parser", help="Parser to use. One of simple or pascal_voc",
                   default="pascal_voc")
 parser.add_option("-n", "--num_rois", dest="num_rois", help="Number of RoIs to process at once.", default=32)
-parser.add_option("--network", dest="network", help="Base network to use. Supports vgg or resnet50.", default='vgg')
+parser.add_option("--network", dest="network", help="Base network to use. Supports vgg or resnet50.", default='resnet50')
 parser.add_option("--hf", dest="horizontal_flips", help="Augment with horizontal flips in training. (Default=false).", action="store_true", default=False)
 parser.add_option("--vf", dest="vertical_flips", help="Augment with vertical flips in training. (Default=false).", action="store_true", default=False)
 parser.add_option("--rot", "--rot_90", dest="rot_90", help="Augment with 90 degree rotations in training. (Default=false).",
                   action="store_true", default=False)
-parser.add_option("--num_epochs", dest="num_epochs", help="Number of epochs.", default=10)
+parser.add_option("--num_epochs", dest="num_epochs", help="Number of epochs.", default=2000)
 parser.add_option("--config_filename", dest="config_filename",
                   help="Location to store all the metadata related to the training (to be used when testing).",
                   default="config.pickle")
@@ -192,7 +192,7 @@ if not os.path.isdir(log_path):
 callback = TensorBoard(log_path)
 callback.set_model(model_all)
 
-epoch_length = 1 #1000
+epoch_length = 1000
 num_epochs = int(options.num_epochs)
 iter_num = 0
 train_step = 0
@@ -213,28 +213,22 @@ for epoch_num in range(num_epochs):
 
     progbar = generic_utils.Progbar(epoch_length)   # keras progress bar 사용
     print('Epoch {}/{}'.format(epoch_num + 1, num_epochs))
-    print('Begin x')
 
     while True:
         # try:
         # mean overlapping bboxes 출력
-        print('Begin')
         if len(rpn_accuracy_rpn_monitor) == epoch_length and C.verbose:
-            print('Begin 1')
             mean_overlapping_bboxes = float(sum(rpn_accuracy_rpn_monitor))/len(rpn_accuracy_rpn_monitor)
             rpn_accuracy_rpn_monitor = []
             print('Average number of overlapping bounding boxes from RPN = {} for {} previous iterations'.format(mean_overlapping_bboxes, epoch_length))
             if mean_overlapping_bboxes == 0:
                 print('RPN is not producing bounding boxes that overlap the ground truth boxes. Check RPN settings or keep training.')
 
-        print('Begin 2')
-        # data generator
+        # data generator에서 X, Y, image 가져오기
         X, Y, img_data = next(data_gen_train)
-        print('Epoch {}/{}'.format(epoch_num + 1, num_epochs))
 
         loss_rpn = model_rpn.train_on_batch(X, Y)
         write_log(callback, ['rpn_cls_loss', 'rpn_reg_loss'], loss_rpn, train_step)
-        print(loss_rpn, train_step)
 
         P_rpn = model_rpn.predict_on_batch(X)
 
