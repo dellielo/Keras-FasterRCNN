@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import random
 import copy
-from keras_frcnn import data_augment
+from . import data_augment
 import threading
 import itertools
 
@@ -199,7 +199,7 @@ def calc_rpn(C, img_data, width, height, resized_width, resized_height, img_leng
                         y_rpn_regr[jy, ix, start:start+4] = best_regr
 
     # we ensure that every bbox has at least one positive RPN region
-    print('num_anchors_for_bbox.shape[0] %d', num_anchors_for_bbox.shape[0])
+
     for idx in range(num_anchors_for_bbox.shape[0]):
         if num_anchors_for_bbox[idx] == 0:
             # no box with an IOU greater than zero ...
@@ -279,65 +279,62 @@ def get_anchor_gt(all_img_data, class_count, C, img_length_calc_function, backen
 
     sample_selector = SampleSelector(class_count)
 
-    #while True:
-    if mode == 'train':
-        random.shuffle(all_img_data)
+    while True:
+        if mode == 'train':
+            random.shuffle(all_img_data)
 
-    for idx, img_data in enumerate(all_img_data):
-        try:
-            if C.balanced_classes and sample_selector.skip_sample_for_balanced_class(img_data):
-                print("Wild")
-                continue
-
-            # read in image, and optionally add augmentation
-
-            if mode == 'train':
-                print('data_augment :', idx)
-                img_data_aug, x_img = data_augment.augment(img_data, C, augment=True)
-            else:
-                img_data_aug, x_img = data_augment.augment(img_data, C, augment=False)
-
-            (width, height) = (img_data_aug['width'], img_data_aug['height'])
-            (rows, cols, _) = x_img.shape
-
-            assert cols == width
-            assert rows == height
-
-            # get image dimensions for resizing
-            (resized_width, resized_height) = get_new_img_size(width, height, C.im_size)
-
-            # resize the image so that smalles side is length = 600px
-            x_img = cv2.resize(x_img, (resized_width, resized_height), interpolation=cv2.INTER_CUBIC)
-
+        for img_data in all_img_data:
             try:
-                # rpn ground-truth cls, reg
-                y_rpn_cls, y_rpn_regr = calc_rpn(C, img_data_aug, width, height, resized_width, resized_height, img_length_calc_function)
-            except:
-                print("Erreur in calc_rpn")
+
+                if C.balanced_classes and sample_selector.skip_sample_for_balanced_class(img_data):
+                    continue
+
+                # read in image, and optionally add augmentation
+
+                if mode == 'train':
+                    img_data_aug, x_img = data_augment.augment(img_data, C, augment=True)
+                else:
+                    img_data_aug, x_img = data_augment.augment(img_data, C, augment=False)
+
+                (width, height) = (img_data_aug['width'], img_data_aug['height'])
+                (rows, cols, _) = x_img.shape
+
+                assert cols == width
+                assert rows == height
+
+                # get image dimensions for resizing
+                (resized_width, resized_height) = get_new_img_size(width, height, C.im_size)
+
+                # resize the image so that smalles side is length = 600px
+                x_img = cv2.resize(x_img, (resized_width, resized_height), interpolation=cv2.INTER_CUBIC)
+
+                try:
+                    # rpn ground-truth cls, reg
+                    y_rpn_cls, y_rpn_regr = calc_rpn(C, img_data_aug, width, height, resized_width, resized_height, img_length_calc_function)
+                except:
+                    continue
+
+                # Zero-center by mean pixel, and preprocess image
+
+                x_img = x_img[:, :, (2, 1, 0)]  # BGR -> RGB
+                x_img = x_img.astype(np.float32)
+                x_img[:, :, 0] -= C.img_channel_mean[0]
+                x_img[:, :, 1] -= C.img_channel_mean[1]
+                x_img[:, :, 2] -= C.img_channel_mean[2]
+                x_img /= C.img_scaling_factor
+
+                x_img = np.transpose(x_img, (2, 0, 1))
+                x_img = np.expand_dims(x_img, axis=0)
+
+                y_rpn_regr[:, y_rpn_regr.shape[1]//2:, :, :] *= C.std_scaling
+
+                if backend == 'tf':
+                    x_img = np.transpose(x_img, (0, 2, 3, 1))
+                    y_rpn_cls = np.transpose(y_rpn_cls, (0, 2, 3, 1))
+                    y_rpn_regr = np.transpose(y_rpn_regr, (0, 2, 3, 1))
+
+                yield np.copy(x_img), [np.copy(y_rpn_cls), np.copy(y_rpn_regr)], img_data_aug
+
+            except Exception as e:
+                print(e)
                 continue
-
-            # Zero-center by mean pixel, and preprocess image
-
-            x_img = x_img[:, :, (2, 1, 0)]  # BGR -> RGB
-            x_img = x_img.astype(np.float32)
-            x_img[:, :, 0] -= C.img_channel_mean[0]
-            x_img[:, :, 1] -= C.img_channel_mean[1]
-            x_img[:, :, 2] -= C.img_channel_mean[2]
-            x_img /= C.img_scaling_factor
-
-            x_img = np.transpose(x_img, (2, 0, 1))
-            x_img = np.expand_dims(x_img, axis=0)
-
-            y_rpn_regr[:, y_rpn_regr.shape[1]//2:, :, :] *= C.std_scaling
-
-            if backend == 'tf':
-                x_img = np.transpose(x_img, (0, 2, 3, 1))
-                y_rpn_cls = np.transpose(y_rpn_cls, (0, 2, 3, 1))
-                y_rpn_regr = np.transpose(y_rpn_regr, (0, 2, 3, 1))
-
-            print('Get batch image')
-            yield np.copy(x_img), [np.copy(y_rpn_cls), np.copy(y_rpn_regr)], img_data_aug
-
-        except Exception as e:
-            print(e)
-            continue
