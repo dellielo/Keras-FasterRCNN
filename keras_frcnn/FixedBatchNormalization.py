@@ -70,7 +70,7 @@ class FixedBatchNormalization(Layer):
             x_normed = K.batch_normalization(
                 x, broadcast_running_mean, broadcast_running_std,
                 broadcast_beta, broadcast_gamma,
-                epsilon=self.epsilon)
+                epsilon=self.epsilon, axis=1)
 
         return x_normed
 
