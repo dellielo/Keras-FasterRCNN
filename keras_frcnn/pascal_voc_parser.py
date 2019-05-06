@@ -73,7 +73,7 @@ def get_data(input_path):
         annots = [os.path.join(annot_path, s) for s in os.listdir(annot_path)]
         idx = 0
 
-        annots = tqdm(annots[:1000])
+        annots = tqdm(annots)
         for annot in annots:
             # try:
             exist_flag = False

@@ -38,12 +38,12 @@ parser.add_option("-p", "--path", dest="train_path", help="Path to training data
 parser.add_option("-o", "--parser", dest="parser", help="Parser to use. One of simple or pascal_voc",
                   default="pascal_voc")
 parser.add_option("-n", "--num_rois", dest="num_rois", help="Number of RoIs to process at once.", default=32)
-parser.add_option("--network", dest="network", help="Base network to use. Supports vgg or resnet50.", default='resnet50')
+parser.add_option("--network", dest="network", help="Base network to use. Supports vgg or resnet50.", default='vgg')
 parser.add_option("--hf", dest="horizontal_flips", help="Augment with horizontal flips in training. (Default=false).", action="store_true", default=False)
 parser.add_option("--vf", dest="vertical_flips", help="Augment with vertical flips in training. (Default=false).", action="store_true", default=False)
 parser.add_option("--rot", "--rot_90", dest="rot_90", help="Augment with 90 degree rotations in training. (Default=false).",
                   action="store_true", default=False)
-parser.add_option("--num_epochs", dest="num_epochs", help="Number of epochs.", default=2000)
+parser.add_option("--num_epochs", dest="num_epochs", help="Number of epochs.", default=10)
 parser.add_option("--config_filename", dest="config_filename",
                   help="Location to store all the metadata related to the training (to be used when testing).",
                   default="config.pickle")
@@ -53,12 +53,18 @@ parser.add_option("--input_weight_path", dest="input_weight_path", help="Input p
 (options, args) = parser.parse_args()
 
 if not options.train_path:   # if filename is not given
-    parser.error('Error: path to training data must be specified. Pass --path to command line')
+    # options.train_path = "C:\\Users\\Elodie\\Programmation\\DevPython\\sandbox\\ca\\VOCdevkit"
+    # options.parser = 'pascal_voc'
+    options.train_path = "C:\\Users\\Elodie\\Programmation\\DevPython\\sandbox\\ca\\01_data"
+    options.parser = 'tobacco'
+    # parser.error('Error: path to training data must be specified. Pass --path to command line')
 
 if options.parser == 'pascal_voc':
     from keras_frcnn.pascal_voc_parser import get_data
 elif options.parser == 'simple':
     from keras_frcnn.simple_parser import get_data
+elif options.parser == 'tobacco':
+    from keras_frcnn.tobacco_parser import get_data
 else:
     raise ValueError("Command line option parser must be one of 'pascal_voc' or 'simple'")
 
@@ -95,10 +101,10 @@ else:
     # set the path to weights based on backend and model
     C.base_net_weights = nn.get_weight_path()
 
-# parser에서 이미지, 클래스, 클래스 맵핑 정보 가져오기
+# parser
 all_imgs, classes_count, class_mapping = get_data(options.train_path)
 
-# bg 클래스 추가
+# bg 
 if 'bg' not in classes_count:
     classes_count['bg'] = 0
     class_mapping['bg'] = len(class_mapping)
@@ -129,7 +135,7 @@ print('Num train samples {}'.format(len(train_imgs)))
 print('Num val samples {}'.format(len(val_imgs)))
 print('Num test samples {}'.format(len(test_imgs)))
 
-# groundtruth anchor 데이터 가져오기
+# groundtruth anchor 
 data_gen_train = data_generators.get_anchor_gt(train_imgs, classes_count, C, nn.get_img_output_length, K.image_dim_ordering(), mode='train')
 data_gen_val = data_generators.get_anchor_gt(val_imgs, classes_count, C, nn.get_img_output_length, K.image_dim_ordering(), mode='val')
 data_gen_test = data_generators.get_anchor_gt(test_imgs, classes_count, C, nn.get_img_output_length, K.image_dim_ordering(), mode='val')
@@ -139,11 +145,11 @@ if K.image_dim_ordering() == 'th':
 else:
     input_shape_img = (None, None, 3)
 
-# input placeholder 정의
+# input placeholder 
 img_input = Input(shape=input_shape_img)
 roi_input = Input(shape=(None, 4))
 
-# base network(feature extractor) 정의 (resnet, VGG, Inception, Inception Resnet V2, etc)
+# base network(feature extractor)(resnet, VGG, Inception, Inception Resnet V2, etc)
 shared_layers = nn.nn_base(img_input, trainable=True)
 
 # define the RPN, built on the base layers
@@ -186,7 +192,7 @@ if not os.path.isdir(log_path):
 callback = TensorBoard(log_path)
 callback.set_model(model_all)
 
-epoch_length = 1000
+epoch_length = 1 #1000
 num_epochs = int(options.num_epochs)
 iter_num = 0
 train_step = 0
@@ -207,22 +213,28 @@ for epoch_num in range(num_epochs):
 
     progbar = generic_utils.Progbar(epoch_length)   # keras progress bar 사용
     print('Epoch {}/{}'.format(epoch_num + 1, num_epochs))
+    print('Begin x')
 
     while True:
         # try:
         # mean overlapping bboxes 출력
+        print('Begin')
         if len(rpn_accuracy_rpn_monitor) == epoch_length and C.verbose:
+            print('Begin 1')
             mean_overlapping_bboxes = float(sum(rpn_accuracy_rpn_monitor))/len(rpn_accuracy_rpn_monitor)
             rpn_accuracy_rpn_monitor = []
             print('Average number of overlapping bounding boxes from RPN = {} for {} previous iterations'.format(mean_overlapping_bboxes, epoch_length))
             if mean_overlapping_bboxes == 0:
                 print('RPN is not producing bounding boxes that overlap the ground truth boxes. Check RPN settings or keep training.')
 
-        # data generator에서 X, Y, image 가져오기
+        print('Begin 2')
+        # data generator
         X, Y, img_data = next(data_gen_train)
+        print('Epoch {}/{}'.format(epoch_num + 1, num_epochs))
 
         loss_rpn = model_rpn.train_on_batch(X, Y)
         write_log(callback, ['rpn_cls_loss', 'rpn_reg_loss'], loss_rpn, train_step)
+        print(loss_rpn, train_step)
 
         P_rpn = model_rpn.predict_on_batch(X)
 

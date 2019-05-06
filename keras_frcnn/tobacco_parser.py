@@ -16,10 +16,9 @@ def get_data(input_path, visualise=False):
     for index, img_path in enumerate(tqdm(imgs_path_list)):
         name_img = os.path.splitext(os.path.basename(img_path))[0]
         annot = os.path.join(annot_path_, name_img + ".xml")
-        print(annot)
         if os.path.exists(annot):
             exist_flag = False
-            #idx += 1
+
             # annot_path.set_description("Processing %s" % annot_path.split(os.sep)[-1])
             et = ET.parse(annot)
             element = et.getroot()
@@ -29,7 +28,7 @@ def get_data(input_path, visualise=False):
             element_width = int(element_page.get('width'))
             element_height = int(element_page.get('height'))
 
-            print(filename, element_width, element_height )
+            # print(filename, element_width, element_height )
             element_objs = element_page.findall('{http://lamp.cfar.umd.edu/GEDI}DL_ZONE')
             annotation_data = {'filepath': img_path, 'width': element_width,
                                     'height': element_height, 'bboxes': []}
@@ -46,7 +45,7 @@ def get_data(input_path, visualise=False):
 
                 if class_name not in class_mapping:
                     class_mapping[class_name] = len(class_mapping) 
-                    
+
                 col = element_obj.get('col')
                 row = element_obj.get('row')
                 width = element_obj.get('width')
