@@ -104,7 +104,7 @@ else:
     C.base_net_weights = nn.get_weight_path()
 
 # parser
-all_imgs, classes_count, class_mapping = get_data(options.train_path, train_size=train_size)
+all_imgs, classes_count, class_mapping = get_data(options.train_path, train_size=options.train_size)
 
 # bg 
 if 'bg' not in classes_count:
