@@ -37,6 +37,8 @@ parser = OptionParser()
 parser.add_option("-p", "--path", dest="train_path", help="Path to training data.")
 parser.add_option("-o", "--parser", dest="parser", help="Parser to use. One of simple or pascal_voc",
                   default="pascal_voc")
+parser.add_option("-r", "--train_size", dest="train_size", help="Proportion of the dataset to include in the test split",
+                  default="0.3")
 parser.add_option("-n", "--num_rois", dest="num_rois", help="Number of RoIs to process at once.", default=32)
 parser.add_option("--network", dest="network", help="Base network to use. Supports vgg or resnet50.", default='resnet50')
 parser.add_option("--hf", dest="horizontal_flips", help="Augment with horizontal flips in training. (Default=false).", action="store_true", default=False)
@@ -102,7 +104,7 @@ else:
     C.base_net_weights = nn.get_weight_path()
 
 # parser
-all_imgs, classes_count, class_mapping = get_data(options.train_path)
+all_imgs, classes_count, class_mapping = get_data(options.train_path, train_size=train_size)
 
 # bg 
 if 'bg' not in classes_count:

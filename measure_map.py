@@ -97,6 +97,8 @@ if options.parser == 'pascal_voc':
     from keras_frcnn.pascal_voc_parser import get_data
 elif options.parser == 'simple':
     from keras_frcnn.simple_parser import get_data
+elif options.parser == 'tobacco':
+    from keras_frcnn.tobacco_parser import get_data
 else:
     raise ValueError("Command line option parser must be one of 'pascal_voc' or 'simple'")
 
@@ -114,6 +116,17 @@ img_path = options.test_path
 
 
 def format_img(img, C):
+    """Format image for mAP. Resize original image to C.im_size (300 in here)
+
+	Args:
+		img: cv2 image
+		C: config
+
+	Returns:
+		img: Scaled and normalized image with expanding dimension
+		fx: ratio for width scaling
+		fy: ratio for height scaling
+	"""
     img_min_side = float(C.im_size)
     (height, width, _) = img.shape
 

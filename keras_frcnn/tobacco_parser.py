@@ -2,9 +2,9 @@ import os
 import cv2
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
+from sklearn.model_selection import train_test_split
 
-
-def get_data(input_path, visualise=False):
+def get_data(input_path, visualise=False, train_size=0.3):
     all_imgs = []
     classes_count = {}
     class_mapping = {}
@@ -13,6 +13,9 @@ def get_data(input_path, visualise=False):
     imgs_path = os.path.join(input_path, 'Tobacco800_SinglePage', 'Tobacco800_SinglePage', 'SinglePageTIF')
     imgs_path_list = [os.path.join(imgs_path, s) for s in os.listdir(imgs_path)]
     
+    img_train, img_test = train_test_split(imgs_path_list, train_size=train_size, random_state=1)
+    img_train, img_val = train_test_split(img_train, test_size=0.33, random_state=1)
+
     for index, img_path in enumerate(tqdm(imgs_path_list)):
         name_img = os.path.splitext(os.path.basename(img_path))[0]
         annot = os.path.join(annot_path_, name_img + ".xml")
@@ -33,7 +36,12 @@ def get_data(input_path, visualise=False):
             annotation_data = {'filepath': img_path, 'width': element_width,
                                     'height': element_height, 'bboxes': []}
             annotation_data['image_id'] = index
-            annotation_data['imageset'] = 'train'
+            if img_path in img_train:
+                annotation_data['imageset'] = 'train'
+            elif img_path in img_test:
+                annotation_data['imageset'] = 'test'
+            else:
+                annotation_data['imageset'] = 'val'
               
             for element_obj in element_objs:
                 class_name = element_obj.get('gedi_type')
